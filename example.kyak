@@ -1,0 +1,2 @@
+title Kyak
+database postgresql://postgres:postgres@localhost/kyak
