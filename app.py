@@ -29,7 +29,7 @@ class Account(db.Model):
 
 class Access(db.Model):
     __tablename__ = 'accesses'
-    acount_id = db.Column(db.String(), primary_key=True)
+    account_id = db.Column(db.String(), primary_key=True)
     owner = db.Column(db.String(), primary_key=True)
     access = db.Column(db.String(), nullable=False)
     created = db.Column(db.DateTime, nullable=False,
@@ -39,7 +39,7 @@ class Access(db.Model):
 
 class Hook(db.Model):
     __tablename__ = 'hooks'
-    acount_id = db.Column(db.String(), primary_key=True)
+    account_id = db.Column(db.String(), primary_key=True)
     type = db.Column(db.String(), primary_key=True, nullable=False)
     url = db.Column(db.String(), nullable=False)
     created = db.Column(db.DateTime, nullable=False,
@@ -70,10 +70,10 @@ def post_accounts():
     db.session.add(account)
 
     if account.type == 'corporate':
-        aid = request.form['admin']
-        if Account.query.get(aid):
+        admin = request.form['admin']
+        if Account.query.get(admin):
             access = Access()
-            access.acount_id = account.id
+            access.account_id = account.id
             access.owner = admin
             access.access = 'Allow full access'
             db.session.add(access)
