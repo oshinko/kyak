@@ -2,7 +2,7 @@
 
 ![Python 3](https://img.shields.io/badge/python-3-blue.svg)
 
-This is a simple application for contract.
+This is a simple application for business contract.
 
 
 ## Installing modules
