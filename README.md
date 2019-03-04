@@ -42,8 +42,22 @@ FLASK_APP=app.py FLASK_DEBUG=1 $HOME/.venv/kyak/bin/flask run
 
 ## Using APIs
 
-Post new account.
+Post new personal account.
 
 ```bash
-curl -v -d id=corp.kyak -d name=Kyak+Inc. -d type=corporate http://localhost:5000/accounts
+curl -v -d id=corp.kyak.employee1 \
+        -d name=Oshinko \
+        -d type=personal \
+        -d hook=https://discordapp.com/api/webhooks/$DISCORD_WEBHOOK_ID/$DISCORD_WEBHOOK_TOKEN \
+        http://localhost:5000/accounts
+```
+
+Post new corporate account.
+
+```bash
+curl -v -d id=corp.kyak \
+        -d name=Kyak+Inc. \
+        -d type=corporate \
+        -d admin=corp.kyak.employee1 \
+        http://localhost:5000/accounts
 ```

@@ -1,4 +1,5 @@
 import config
+import datetime
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
@@ -18,9 +19,32 @@ class Account(db.Model):
     __tablename__ = 'accounts'
     id = db.Column(db.String(), primary_key=True)
     name = db.Column(db.String(), nullable=False)
-    type = db.Column(db.String(), nullable=False)
+    type = db.Column(db.String(), nullable=False, default='personal')
     email = db.Column(db.String(), nullable=True)
     address = db.Column(db.String(), nullable=True)
+    created = db.Column(db.DateTime, nullable=False,
+                        default=datetime.datetime.utcnow)
+    updated = db.Column(db.DateTime, nullable=True)
+
+
+class Access(db.Model):
+    __tablename__ = 'accesses'
+    acount_id = db.Column(db.String(), primary_key=True)
+    owner = db.Column(db.String(), primary_key=True)
+    access = db.Column(db.String(), nullable=False)
+    created = db.Column(db.DateTime, nullable=False,
+                        default=datetime.datetime.utcnow)
+    updated = db.Column(db.DateTime, nullable=True)
+
+
+class Hook(db.Model):
+    __tablename__ = 'hooks'
+    acount_id = db.Column(db.String(), primary_key=True)
+    type = db.Column(db.String(), primary_key=True, nullable=False)
+    url = db.Column(db.String(), nullable=False)
+    created = db.Column(db.DateTime, nullable=False,
+                        default=datetime.datetime.utcnow)
+    updated = db.Column(db.DateTime, nullable=True)
 
 
 class AccountSchema(ma.ModelSchema):
@@ -44,6 +68,25 @@ def post_accounts():
     account.email = request.form.get('email')
     account.address = request.form.get('address')
     db.session.add(account)
+
+    if account.type == 'corporate':
+        aid = request.form['admin']
+        if Account.query.get(aid):
+            access = Access()
+            access.acount_id = account.id
+            access.owner = admin
+            access.access = 'Allow full access'
+            db.session.add(access)
+        else:
+            db.rollback()
+            return jsonify('Bad Request'), 400
+    else:
+        hook = Hook()
+        hook.account_id = account.id
+        hook.type = 'auth'
+        hook.url = request.form['hook']
+        db.session.add(hook)
+
     db.session.commit()
     return jsonify(AccountSchema().dump(account).data)
 
@@ -64,3 +107,15 @@ def delete_accounts(aid):
         db.session.commit()
         return jsonify(AccountSchema().dump(account).data)
     return jsonify('Not Found'), 404
+
+
+if __name__ == '__main__':
+    import sqlalchemy.schema
+    import sys
+
+    if len(sys.argv) < 2:
+        print('usage:', sys.argv[0], 'show create tables', file=sys.stderr)
+        exit(1)
+
+    for model in (Account,):
+            print(sqlalchemy.schema.CreateTable(model.__table__))
