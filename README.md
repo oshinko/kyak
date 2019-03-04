@@ -46,7 +46,7 @@ Post new personal account.
 
 ```bash
 curl -v -d id=corp.kyak.employee1 \
-        -d name=Oshinko \
+        -d name=Employee1 \
         -d type=personal \
         -d hook=https://discordapp.com/api/webhooks/$DISCORD_WEBHOOK_ID/$DISCORD_WEBHOOK_TOKEN \
         http://localhost:5000/accounts
