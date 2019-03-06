@@ -4,3 +4,5 @@ Flask-SQLAlchemy==2.3.1
 marshmallow-sqlalchemy===0.16.0
 psycopg2==2.7.7
 psycopg2-binary==2.7.7
+git+https://github.com/oshinko/pyvalidation.git#egg=validation
+git+https://github.com/oshinko/pyhttpauth.git#egg=httpauth

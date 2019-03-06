@@ -3,9 +3,10 @@ from datetime import datetime
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
+from osnk.httpauth import EmailAuthentication, TokenAuthentication
+from osnk.validations import requires
 from os import urandom
 from pathlib import Path
-
 
 def rand16hex():
     return urandom(16).hex()
@@ -206,7 +207,33 @@ def post_accounts():
     return jsonify(AccountSchema().dump(account).data)
 
 
+secret = b'Your secret words'
+otp_auth = EmailAuthentication(secret, scheme='OTP')
+token_auth = TokenAuthentication(secret)
+
+
+@app.route('/auth', methods=['POST'])
+def post_auth():
+    expires = datetime.now() + timedelta(hours=1)
+    aid = request.form['account']
+    account = Account.get(aid)
+    if not account:
+        return jsonify('Not Found'), 404
+    credentials = [(aid, password())]
+    hint = otp_auth.hint(credentials, expires)
+    posthook(credentials)
+    return jsonify(hint)
+
+
+@app.route('/token', methods=['GET'])
+@requires(otp_auth)
+def get_token():
+    expires = datetime.now() + timedelta(hours=1)
+    return jsonify(token_auth.build(expires, otp_auth.payload))
+
+
 @app.route('/accounts/<aid>')
+@requires(token_auth)
 def get_accounts(aid):
     account = Account.query.get(aid)
     if account:
