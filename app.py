@@ -163,6 +163,10 @@ class AccountSchema(ma.ModelSchema):
         model = Account
 
 
+def get_system_contracts(*, contractors=None, when=datetime.now()):
+    return None
+
+
 @app.route('/')
 def index():
     accounts = Account.query.all()
