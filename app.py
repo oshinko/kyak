@@ -221,12 +221,15 @@ def delete_accounts(aid):
 
 
 if __name__ == '__main__':
-    import sqlalchemy.schema
     import sys
 
     if len(sys.argv) < 2:
         print('usage:', sys.argv[0], 'show create tables', file=sys.stderr)
         exit(1)
 
-    for model in (Account,):
-            print(sqlalchemy.schema.CreateTable(model.__table__))
+    import inspect
+    import sqlalchemy.schema
+
+    for _, obj in dict(globals()).items():
+        if inspect.isclass(obj) and hasattr(obj, '__table__'):
+            print(sqlalchemy.schema.CreateTable(obj.__table__))
