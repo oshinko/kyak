@@ -48,7 +48,7 @@ Post new personal account.
 curl -v -d id=corp.kyak.employee1 \
         -d name=Employee1 \
         -d type=personal \
-        -d hook=https://discordapp.com/api/webhooks/$DISCORD_WEBHOOK_ID/$DISCORD_WEBHOOK_TOKEN \
+        -d hook=https://discordapp.com/api/webhooks/$DISCORD_WEBHOOK_ID/$DISCORD_WEBHOOK_TOKEN/slack \
         http://localhost:5000/accounts
 ```
 

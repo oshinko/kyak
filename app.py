@@ -1,4 +1,6 @@
 import config
+import json
+import requests
 from datetime import datetime
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_marshmallow import Marshmallow
@@ -7,6 +9,7 @@ from osnk.httpauth import EmailAuthentication, TokenAuthentication
 from osnk.validations import requires
 from os import urandom
 from pathlib import Path
+
 
 def rand16hex():
     return urandom(16).hex()
@@ -46,7 +49,7 @@ class Hook(db.Model):
     __tablename__ = 'hooks'
     account_id = db.Column(db.String(16), primary_key=True)
     type = db.Column(db.String(16), primary_key=True)
-    url = db.Column(db.String(), nullable=False)
+    url = db.Column(db.String(), unique=True, nullable=False)
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
 
@@ -174,7 +177,46 @@ def index():
     return render_template('index.html', accounts=accounts)
 
 
+secret = b'Your secret words'
+auth = EmailAuthentication(secret, scheme='Hook')
+hook_token = TokenAuthentication(secret)
+account_token = TokenAuthentication(secret)
+# TODO hook_token の confirm で payload に hook が含まれてるか確認する
+# TODO account_token でも同じように実装する
+
+
+@app.route('/auth', methods=['POST'])
+def post_auth():
+    expires = datetime.now() + timedelta(hours=1)
+    aid_or_hook = request.form['id']
+    if aid_or_hook.startswith('http'):
+        url = aid_or_hook
+        hook = Hook.query.filter_by(url=url).first()
+        if hook:
+            payload = {'account': hook.account_id}
+        else:
+            payload = {'hook': url}
+    else:
+        aid = aid_or_hook
+        hook = Hook.query.filter_by(account_id=aid, type='auth').first_or_404()
+        payload = {'account': hook.account_id}
+    passwd = password()
+    encoded = json.dumps(payload).encode()
+    hint = auth.hint([(hook.url, passwd)], expires, encoded)
+    requests.post(hook, json={'text': passwd})
+    return jsonify(hint)
+
+
+@app.route('/token', methods=['GET'])
+@requires(auth)
+def get_token():
+    expires = datetime.now() + timedelta(hours=1)
+    token = hook_token or account_token  # FIXME
+    return jsonify(token.build(expires, auth.payload))
+
+
 @app.route('/accounts', methods=['POST'])
+@requires(hook_token)
 def post_accounts():
     account = Account()
     account.id = request.form['id']
@@ -207,48 +249,20 @@ def post_accounts():
     return jsonify(AccountSchema().dump(account).data)
 
 
-secret = b'Your secret words'
-otp_auth = EmailAuthentication(secret, scheme='OTP')
-token_auth = TokenAuthentication(secret)
-
-
-@app.route('/auth', methods=['POST'])
-def post_auth():
-    expires = datetime.now() + timedelta(hours=1)
-    aid = request.form['account']
-    account = Account.get(aid)
-    if not account:
-        return jsonify('Not Found'), 404
-    credentials = [(aid, password())]
-    hint = otp_auth.hint(credentials, expires)
-    posthook(credentials)
-    return jsonify(hint)
-
-
-@app.route('/token', methods=['GET'])
-@requires(otp_auth)
-def get_token():
-    expires = datetime.now() + timedelta(hours=1)
-    return jsonify(token_auth.build(expires, otp_auth.payload))
-
-
 @app.route('/accounts/<aid>')
-@requires(token_auth)
+@requires(account_token)
 def get_accounts(aid):
-    account = Account.query.get(aid)
-    if account:
-        return jsonify(AccountSchema().dump(account).data)
-    return jsonify('Not Found'), 404
+    account = Account.query.get_or_404(aid)
+    return jsonify(AccountSchema().dump(account).data)
 
 
 @app.route('/accounts/<aid>', methods=['DELETE'])
+@requires(account_token)
 def delete_accounts(aid):
-    account = Account.query.get(aid)
-    if account:
-        db.session.delete(account)
-        db.session.commit()
-        return jsonify(AccountSchema().dump(account).data)
-    return jsonify('Not Found'), 404
+    account = Account.query.get_or_404(aid)
+    db.session.delete(account)
+    db.session.commit()
+    return jsonify(AccountSchema().dump(account).data)
 
 
 if __name__ == '__main__':
