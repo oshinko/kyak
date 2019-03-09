@@ -1,11 +1,13 @@
 import config
 import json
 import requests
-from datetime import datetime
+import random
+import string
+from datetime import datetime, timedelta
 from flask import Flask, jsonify, redirect, render_template, request, url_for
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
-from osnk.httpauth import EmailAuthentication, TokenAuthentication
+from osnk.http.auth import EmailAuthentication, TokenAuthentication
 from osnk.validations import requires
 from os import urandom
 from pathlib import Path
@@ -176,13 +178,46 @@ def index():
     accounts = Account.query.all()
     return render_template('index.html', accounts=accounts)
 
-
-secret = b'Your secret words'
+secret = conf.secret.encode()
 auth = EmailAuthentication(secret, scheme='Hook')
 hook_token = TokenAuthentication(secret)
 account_token = TokenAuthentication(secret)
-# TODO hook_token の confirm で payload に hook が含まれてるか確認する
-# TODO account_token でも同じように実装する
+
+
+@auth.authorization
+@hook_token.authorization
+@account_token.authorization
+def authorization(header):
+    return request.headers.get(header)
+
+
+@auth.authenticate
+@hook_token.authenticate
+@account_token.authenticate
+def authenticate(header, scheme):
+    return jsonify(error='Unauthorized'), 401, {header: scheme}
+
+
+@hook_token.payload_from_bytes
+@account_token.payload_from_bytes
+def token_payload_from_bytes(b):
+    return json.loads(b.decode())
+
+
+@hook_token.payload_to_bytes
+@account_token.payload_to_bytes
+def token_payload_to_bytes(payload):
+    return json.dumps(payload).encode()
+
+
+@hook_token.confirm
+def hook_token_confirm(payload):
+    return 'hook' in payload
+
+
+@account_token.confirm
+def account_token_confirm(payload):
+    return 'account' in payload
 
 
 @app.route('/auth', methods=['POST'])
@@ -200,10 +235,12 @@ def post_auth():
         aid = aid_or_hook
         hook = Hook.query.filter_by(account_id=aid, type='auth').first_or_404()
         payload = {'account': hook.account_id}
-    passwd = password()
+        url = hook.url
+    s = string.ascii_uppercase + string.digits
+    password = ''.join(random.choices(s, k=8))
     encoded = json.dumps(payload).encode()
-    hint = auth.hint([(hook.url, passwd)], expires, encoded)
-    requests.post(hook, json={'text': passwd})
+    hint = auth.hint([(aid_or_hook, password)], expires, encoded)
+    requests.post(url, json={'text': password})
     return jsonify(hint)
 
 
@@ -211,8 +248,9 @@ def post_auth():
 @requires(auth)
 def get_token():
     expires = datetime.now() + timedelta(hours=1)
-    token = hook_token or account_token  # FIXME
-    return jsonify(token.build(expires, auth.payload))
+    payload = json.loads(auth.payload)
+    token = hook_token if hook_token_confirm(payload) else account_token
+    return jsonify(token.build(expires, payload))
 
 
 @app.route('/accounts', methods=['POST'])

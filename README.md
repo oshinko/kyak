@@ -45,19 +45,53 @@ FLASK_APP=app.py FLASK_DEBUG=1 $HOME/.venv/kyak/bin/flask run
 Post new personal account.
 
 ```bash
-curl -v -d id=corp.kyak.employee1 \
-        -d name=Employee1 \
-        -d type=personal \
-        -d hook=https://discordapp.com/api/webhooks/$DISCORD_WEBHOOK_ID/$DISCORD_WEBHOOK_TOKEN/slack \
-        http://localhost:5000/accounts
+DISCORD_WEBHOOK_ID=your-discord-webhook-id
+DISCORD_WEBHOOK_TOKEN=your-discord-webhook-token
+
+HOOK=https://discordapp.com/api/webhooks/$DISCORD_WEBHOOK_ID/$DISCORD_WEBHOOK_TOKEN/slack
+
+HINT=`curl -d id=$HOOK http://localhost:5000/auth | sed -e 's/^"//' -e 's/"$//'`
+
+RECEIVED_PASSWORD=your-received-password
+
+ADDR=`echo -n $HOOK | base64`
+PASS=`echo -n $RECEIVED_PASSWORD | base64`
+
+TOKEN=`curl -H "Authorization: Hook $ADDR $PASS $HINT" \
+            http://localhost:5000/token | sed -e 's/^"//' -e 's/"$//'`
+
+ACCOUNT=corp.kyak.employee1
+
+curl -H "Authorization: Bearer $TOKEN" \
+     -d id=$ACCOUNT \
+     -d name=Employee1 \
+     -d type=personal \
+     -d hook=$HOOK \
+     http://localhost:5000/accounts
+```
+
+Get account info.
+
+```bash
+HINT=`curl -d id=$ACCOUNT http://localhost:5000/auth | sed -e 's/^"//' -e 's/"$//'`
+
+RECEIVED_PASSWORD=your-received-password
+
+ADDR=`echo -n $ACCOUNT | base64`
+PASS=`echo -n $RECEIVED_PASSWORD | base64`
+
+TOKEN=`curl -H "Authorization: Hook $ADDR $PASS $HINT" \
+            http://localhost:5000/token | sed -e 's/^"//' -e 's/"$//'`
+
+curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/accounts/$ACCOUNT
 ```
 
 Post new corporate account.
 
 ```bash
-curl -v -d id=corp.kyak \
-        -d name=Kyak+Inc. \
-        -d type=corporate \
-        -d admin=corp.kyak.employee1 \
-        http://localhost:5000/accounts
+curl -H "Authorization: Bearer $TOKEN" \
+     -d id=corp.kyak \
+     -d name=Kyak+Inc. \
+     -d admin=$ACCOUNT \
+     http://localhost:5000/corporate/accounts
 ```
