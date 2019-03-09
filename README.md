@@ -42,17 +42,22 @@ FLASK_APP=app.py FLASK_DEBUG=1 $HOME/.venv/kyak/bin/flask run
 
 ## Using APIs
 
+The authentication password is sent to Slack compatible Webhook.
+
+If you use Discord.
+
+```bash
+DISCORD_WEBHOOK_ID=Your-Discord-Webhook-ID
+DISCORD_WEBHOOK_TOKEN=Your-Discord-Webhook-Token
+HOOK=https://discordapp.com/api/webhooks/$DISCORD_WEBHOOK_ID/$DISCORD_WEBHOOK_TOKEN/slack
+```
+
 Post new personal account.
 
 ```bash
-DISCORD_WEBHOOK_ID=your-discord-webhook-id
-DISCORD_WEBHOOK_TOKEN=your-discord-webhook-token
-
-HOOK=https://discordapp.com/api/webhooks/$DISCORD_WEBHOOK_ID/$DISCORD_WEBHOOK_TOKEN/slack
-
 HINT=`curl -d id=$HOOK http://localhost:5000/auth | sed -e 's/^"//' -e 's/"$//'`
 
-RECEIVED_PASSWORD=your-received-password
+RECEIVED_PASSWORD=Your-Received-Password
 
 ADDR=`echo -n $HOOK | base64`
 PASS=`echo -n $RECEIVED_PASSWORD | base64`
@@ -73,7 +78,7 @@ Get account info.
 ```bash
 HINT=`curl -d id=$ACCOUNT http://localhost:5000/auth | sed -e 's/^"//' -e 's/"$//'`
 
-RECEIVED_PASSWORD=your-received-password
+RECEIVED_PASSWORD=Your-Received-Password
 
 ADDR=`echo -n $ACCOUNT | base64`
 PASS=`echo -n $RECEIVED_PASSWORD | base64`
