@@ -194,7 +194,8 @@ def get_system_contracts(*, contractors=None, when=datetime.now()):
 @app.route('/')
 def index():
     accounts = Account.query.all()
-    return render_template('index.html', accounts=accounts)
+    return render_template('index.html', title=conf.title)
+
 
 secret = conf.secret.encode()
 auth = EmailAuthentication(secret, scheme='Hook')
@@ -213,7 +214,7 @@ def authorization(header):
 @hook_token.authenticate
 @account_token.authenticate
 def authenticate(header, scheme):
-    return jsonify(error='Unauthorized'), 401, {header: scheme}
+    return jsonify('Unauthorized'), 401, {header: scheme}
 
 
 @hook_token.payload_from_bytes
@@ -267,8 +268,11 @@ def post_auth():
 def get_token():
     expires = datetime.now() + timedelta(hours=1)
     payload = json.loads(auth.payload)
-    token = hook_token if hook_token_confirm(payload) else account_token
-    return jsonify(token.build(expires, payload))
+    if hook_token_confirm(payload):
+        t, token = 'hook', hook_token
+    else:
+        t, token = 'account', account_token
+    return jsonify(type=t, value=token.build(expires, payload))
 
 
 @app.route('/personal/accounts', methods=['POST'])

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8">
+        <title>{{ title }}</title>
+    </head>
+    <style>
+        #signin, #signup {
+            display: none;
+        }
+    </style>
+    <script>
+        function signElements() {
+            return [
+                document.querySelector('#signup'),
+                document.querySelector('#signin')
+            ];
+        }
+        function submitAuth(form) {
+            var signup = signElements()[0],
+                signin = signElements()[1];
+            signup.style.display = 'none';
+            signin.style.display = 'none';
+            var req = new XMLHttpRequest();
+            req.onreadystatechange = function() {
+                switch (req.readyState) {
+                    case 4:
+                        if (req.status == 200) {
+                            localStorage.setItem('addr', JSON.stringify(form.id.value));
+                            localStorage.setItem('hint', req.responseText);
+                            form.id.value = '';
+                        }
+                }
+            }
+            req.open('POST', '/auth');
+            req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            req.send(`id=${encodeURIComponent(form.id.value)}`);
+        }
+        function submitGetToken(form) {
+            var signup = signElements()[0],
+                signin = signElements()[1];
+            signup.style.display = 'none';
+            signin.style.display = 'none';
+            var s = localStorage.getItem('addr');
+            if (!s) {
+                return;  // FIXME
+            }
+            var addr = btoa(unescape(encodeURIComponent(JSON.parse(s))));
+            var pass = btoa(unescape(encodeURIComponent(form.password.value)));
+            s = localStorage.getItem('hint');
+            if (!s) {
+                return;  // FIXME
+            }
+            var hint = JSON.parse(s);
+            var req = new XMLHttpRequest();
+            req.onreadystatechange = function() {
+                switch (req.readyState) {
+                    case 4:
+                        if (req.status == 200) {
+                            token = JSON.parse(req.responseText);
+                            if (token.type == 'hook') {
+                                signup.style.display = 'block';
+                                signin.style.display = 'none';
+                            } else {
+                                signup.style.display = 'none';
+                                signin.style.display = 'block';
+                            }
+                            localStorage.setItem('token', req.responseText);
+                        }
+                }
+            }
+            req.open('GET', '/token');
+            req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            req.setRequestHeader('Authorization', `Hook ${addr} ${pass} ${hint}`);
+            req.send();
+        }
+    </script>
+    <body>
+        <h1>{{ title }}</h1>
+        <section id="auth">
+            <form onsubmit="submitAuth(this); return false">
+                <input type="text" name="id" placeholder="ID or Hook">
+                <button type="submit">Authentication</button>
+            </form>
+            <form onsubmit="submitGetToken(this); return false">
+                <input type="text" name="password" placeholder="Received password">
+                <button type="submit">Get token</button>
+            </form>
+        </section>
+        <form id="signup" onsubmit="submitGetAccount(this); return false">
+            <input type="text" name="id" placeholder="ID">
+            <input type="text" name="name" placeholder="Name">
+            <button type="submit">Get account</button>
+        </form>
+        <form id="signin" onsubmit="submitPostAccount(this); return false">
+            <input type="text" name="id" placeholder="ID">
+            <input type="text" name="name" placeholder="Name">
+            <button type="submit">Post account</button>
+        </form>
+    </body>
+</html>

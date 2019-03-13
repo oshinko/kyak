@@ -63,7 +63,9 @@ ADDR=`echo -n $HOOK | base64`
 PASS=`echo -n $RECEIVED_PASSWORD | base64`
 
 TOKEN=`curl -H "Authorization: Hook $ADDR $PASS $HINT" \
-            http://localhost:5000/token | sed -e 's/^"//' -e 's/"$//'`
+            http://localhost:5000/token |
+       grep -o '"value": "[^"]*' |
+       grep -o '[^"]*$'`
 
 ACCOUNT=corp.kyak.employee1
 
@@ -84,7 +86,9 @@ ADDR=`echo -n $ACCOUNT | base64`
 PASS=`echo -n $RECEIVED_PASSWORD | base64`
 
 TOKEN=`curl -H "Authorization: Hook $ADDR $PASS $HINT" \
-            http://localhost:5000/token | sed -e 's/^"//' -e 's/"$//'`
+            http://localhost:5000/token |
+       grep -o '"value": "[^"]*' |
+       grep -o '[^"]*$'`
 
 curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/accounts/$ACCOUNT
 ```
