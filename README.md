@@ -72,7 +72,7 @@ ACCOUNT=corp.kyak.employee1
 curl -H "Authorization: Bearer $TOKEN" \
      -d id=$ACCOUNT \
      -d name=Employee1 \
-     http://localhost:5000/personal/accounts
+     http://localhost:5000/accounts
 ```
 
 Get account info.
@@ -99,5 +99,5 @@ Post new corporate account.
 curl -H "Authorization: Bearer $TOKEN" \
      -d id=corp.kyak \
      -d name=Kyak+Inc. \
-     http://localhost:5000/corporate/accounts
+     http://localhost:5000/accounts
 ```

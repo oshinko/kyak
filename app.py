@@ -275,46 +275,29 @@ def get_token():
     return jsonify(type=t, value=token.build(expires, payload))
 
 
-@app.route('/personal/accounts', methods=['POST'])
-@requires(hook_token)
-def post_personal_accounts():
+@app.route('/accounts', methods=['POST'])
+@requires(hook_token | account_token)
+def post_personal_accounts(passed):
     account = Account()
     account.id = request.form['id']
     account.name = request.form['name']
+    if account_token in passed:
+        account.type = 'corporate'
+        access = Access()
+        access.account_id = account.id
+        access.owner = account_token.payload['account']
+        access.access = 'Allow full access'
+        db.session.add(access)
+    else:
+        hook = Hook()
+        hook.account_id = account.id
+        hook.type = 'auth'
+        hook.url = hook_token.payload['hook']
+        db.session.add(hook)
     account.email = request.form.get('email')
     account.address = request.form.get('address')
     db.session.add(account)
-
-    hook = Hook()
-    hook.account_id = account.id
-    hook.type = 'auth'
-    hook.url = hook_token.payload['hook']
-    db.session.add(hook)
-
     db.session.commit()
-
-    return jsonify(AccountSchema().dump(account).data)
-
-
-@app.route('/corporate/accounts', methods=['POST'])
-@requires(account_token)
-def post_corporate_accounts():
-    account = Account()
-    account.id = request.form['id']
-    account.name = request.form['name']
-    account.type = 'corporate'
-    account.email = request.form.get('email')
-    account.address = request.form.get('address')
-    db.session.add(account)
-
-    access = Access()
-    access.account_id = account.id
-    access.owner = account_token.payload['account']
-    access.access = 'Allow full access'
-    db.session.add(access)
-
-    db.session.commit()
-
     return jsonify(AccountSchema().dump(account).data)
 
 
