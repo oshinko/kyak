@@ -118,7 +118,7 @@
                 <button type="submit">Get token</button>
             </form>
         </section>
-        <form id="signup" onsubmit="submitPostAccount(this); return false">
+        <form id="signup" onsubmit="return submitPostAccount(this)">
             <input type="text" name="id" placeholder="ID">
             <input type="text" name="name" placeholder="Name">
             <button type="submit">Post account</button>
