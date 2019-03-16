@@ -311,6 +311,8 @@ def get_accounts(aid):
 @app.route('/accounts/<aid>', methods=['DELETE'])
 @requires(account_token)
 def delete_accounts(aid):
+    if aid != account_token.payload['account']:
+        return jsonify('Forbidden'), 403
     account = Account.query.get_or_404(aid)
     db.session.delete(account)
     db.session.commit()
