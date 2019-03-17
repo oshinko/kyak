@@ -3,7 +3,7 @@ import requests
 import random
 import string
 from datetime import datetime, timedelta
-from flask import Flask, jsonify, redirect, render_template, request, url_for
+from flask import Flask, jsonify, redirect, request
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
 from osnk.http.auth import EmailAuthentication, TokenAuthentication
@@ -193,8 +193,7 @@ def get_system_contracts(*, contractors=None, when=datetime.now()):
 
 @app.route('/')
 def index():
-    accounts = Account.query.all()
-    return render_template('index.html', title=conf.title)
+    return Path('index.html').read_text().replace('{{ title }}', conf.title)
 
 
 secret = conf.secret.encode()
