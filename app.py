@@ -277,23 +277,26 @@ def get_token():
 
 @app.route('/accounts', methods=['POST'])
 @requires(hook_token | account_token)
-def post_personal_accounts(passed):
+def post_accounts(passed):
+    aid = request.form['id']
+    if aid == 'me':
+        return jsonify('Bad Request', 400)
     account = Account()
-    account.id = request.form['id']
+    account.id = aid
     account.name = request.form['name']
-    if account_token in passed:
+    if hook_token in passed:
+        hook = Hook()
+        hook.account_id = account.id
+        hook.type = 'auth'
+        hook.url = hook_token.payload['hook']
+        db.session.add(hook)
+    else:
         account.type = 'corporate'
         access = Access()
         access.account_id = account.id
         access.owner = account_token.payload['account']
         access.access = 'Allow full access'
         db.session.add(access)
-    else:
-        hook = Hook()
-        hook.account_id = account.id
-        hook.type = 'auth'
-        hook.url = hook_token.payload['hook']
-        db.session.add(hook)
     account.email = request.form.get('email')
     account.address = request.form.get('address')
     db.session.add(account)
@@ -304,7 +307,10 @@ def post_personal_accounts(passed):
 @app.route('/accounts/<aid>')
 @requires(account_token)
 def get_accounts(aid):
-    account = Account.query.get_or_404(aid)
+    if aid == 'me':
+        account = Account.query.get_or_404(account_token.payload['account'])
+    else:
+        account = Account.query.get_or_404(aid)
     return jsonify(AccountSchema().dump(account).data)
 
 

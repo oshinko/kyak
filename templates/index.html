@@ -16,7 +16,7 @@
                 document.querySelector('#signin')
             ];
         }
-        function submitAuth(form) {
+        function submitPostAuth(form) {
             var signup = signElements()[0],
                 signin = signElements()[1];
             signup.style.display = 'none';
@@ -43,30 +43,27 @@
             signup.style.display = 'none';
             signin.style.display = 'none';
             var s = localStorage.getItem('addr');
-            if (!s) {
-                return false;  // FIXME
-            }
             var addr = btoa(unescape(encodeURIComponent(JSON.parse(s))));
             var pass = btoa(unescape(encodeURIComponent(form.password.value)));
-            s = localStorage.getItem('hint');
-            if (!s) {
-                return false;  // FIXME
-            }
-            var hint = JSON.parse(s);
+            var hint = JSON.parse(localStorage.getItem('hint'));
             var req = new XMLHttpRequest();
             req.onreadystatechange = function() {
                 switch (req.readyState) {
                     case 4:
                         if (req.status == 200) {
-                            token = JSON.parse(req.responseText);
+                            var token = JSON.parse(req.responseText);
                             if (token.type == 'hook') {
                                 signup.style.display = 'block';
                                 signin.style.display = 'none';
                             } else {
-                                signup.style.display = 'none';
-                                signin.style.display = 'block';
+                                callGetAccount('me', function(account) {
+                                    signup.style.display = 'none';
+                                    signin.style.display = 'block';
+                                });
                             }
                             localStorage.setItem('token', req.responseText);
+                        } else if (req.status == 401) {
+                            alert('Authentication failed. Please try again.');
                         }
                 }
             }
@@ -77,14 +74,7 @@
             return false;
         }
         function submitPostAccount(form) {
-            var s = localStorage.getItem('token');
-            if (!s) {
-                return false;  // FIXME
-            }
-            var token = JSON.parse(s);
-            if (token.type != 'hook') {
-                return false;  // FIXME
-            }
+            var token = JSON.parse(localStorage.getItem('token'));
             var req = new XMLHttpRequest();
             req.onreadystatechange = function() {
                 switch (req.readyState) {
@@ -102,14 +92,50 @@
                      `&name=${encodeURIComponent(form.name.value)}`);
             return false;
         }
+        function callGetAccount(id, success) {
+            var token = JSON.parse(localStorage.getItem('token'));
+            var req = new XMLHttpRequest();
+            req.onreadystatechange = function() {
+                switch (req.readyState) {
+                    case 4:
+                        if (req.status == 200) {
+                            var account = JSON.parse(req.responseText);
+                            var accounts = document.querySelector('#accounts tbody');
+                            var tr = document.createElement('tr');
+                            var id = document.createElement('td');
+                            id.innerHTML = account.id;
+                            tr.appendChild(id);
+                            var type = document.createElement('td');
+                            type.innerHTML = account.type;
+                            tr.appendChild(type);
+                            var name = document.createElement('td');
+                            name.innerHTML = account.name;
+                            tr.appendChild(name);
+                            var email = document.createElement('td');
+                            email.innerHTML = account.email;
+                            tr.appendChild(email);
+                            var address = document.createElement('td');
+                            address.innerHTML = account.address;
+                            tr.appendChild(address);
+                            accounts.appendChild(tr);
+                            success(account);
+                        }
+                }
+            }
+            req.open('GET', `/accounts/${id}`);
+            req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+            req.setRequestHeader('Authorization', `Bearer ${token.value}`);
+            req.send();
+        }
         function submitGetAccount(form) {
+            callGetAccount(form.id.value);
             return false;
         }
     </script>
     <body>
         <h1>{{ title }}</h1>
         <section id="auth">
-            <form onsubmit="return submitAuth(this)">
+            <form onsubmit="return submitPostAuth(this)">
                 <input type="text" name="id" placeholder="ID or Hook">
                 <button type="submit">Authentication</button>
             </form>
@@ -123,10 +149,19 @@
             <input type="text" name="name" placeholder="Name">
             <button type="submit">Post account</button>
         </form>
-        <form id="signin" onsubmit="return submitGetAccount(this)">
-            <input type="text" name="id" placeholder="ID">
-            <input type="text" name="name" placeholder="Name">
-            <button type="submit">Get account</button>
-        </form>
+        <section id="signin">
+            <form onsubmit="return submitGetAccount(this)">
+                <input type="text" name="id" placeholder="ID">
+                <input type="text" name="name" placeholder="Name">
+                <button type="submit">Get account</button>
+            </form>
+            <h1>Accounts</h1>
+            <table id="accounts">
+                <thead>
+                    <tr><th>ID</th><th>Type</th><th>Name</th><th>E-mail</th><th>Address</th></tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </section>
     </body>
 </html>
