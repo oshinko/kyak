@@ -52,7 +52,7 @@ DISCORD_WEBHOOK_TOKEN=Your-Discord-Webhook-Token
 HOOK=https://discordapp.com/api/webhooks/$DISCORD_WEBHOOK_ID/$DISCORD_WEBHOOK_TOKEN/slack
 ```
 
-Post new personal account.
+Post your account.
 
 ```bash
 HINT=`curl -d id=$HOOK http://localhost:5000/auth | sed -e 's/^"//' -e 's/"$//'`
@@ -75,7 +75,7 @@ curl -H "Authorization: Bearer $TOKEN" \
      http://localhost:5000/accounts
 ```
 
-Get account info.
+Sign in to your account.
 
 ```bash
 HINT=`curl -d id=$ACCOUNT http://localhost:5000/auth | sed -e 's/^"//' -e 's/"$//'`
@@ -91,13 +91,4 @@ TOKEN=`curl -H "Authorization: Hook $ADDR $PASS $HINT" \
        grep -o '[^"]*$'`
 
 curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/accounts/$ACCOUNT
-```
-
-Post new corporate account.
-
-```bash
-curl -H "Authorization: Bearer $TOKEN" \
-     -d id=corp.kyak \
-     -d name=Kyak+Inc. \
-     http://localhost:5000/accounts
 ```
