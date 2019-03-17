@@ -51,6 +51,7 @@
                 switch (req.readyState) {
                     case 4:
                         if (req.status == 200) {
+                            localStorage.setItem('token', req.responseText);
                             var token = JSON.parse(req.responseText);
                             if (token.type == 'hook') {
                                 signup.style.display = 'block';
@@ -61,7 +62,6 @@
                                     signin.style.display = 'block';
                                 });
                             }
-                            localStorage.setItem('token', req.responseText);
                         } else if (req.status == 401) {
                             alert('Authentication failed. Please try again.');
                         }
