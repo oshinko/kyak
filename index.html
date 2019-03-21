@@ -4,75 +4,131 @@
         <meta charset="utf-8">
         <title>{{ title }}</title>
     </head>
-    <style>
-        #signin, #signup {
-            display: none;
-        }
-    </style>
     <script>
-        function signElements() {
-            return [
-                document.querySelector('#signup'),
-                document.querySelector('#signin')
-            ];
+        function toUrlEncoded(obj) {
+            var e = encodeURIComponent;
+            return Object.keys(obj).map(k => e(k) + '=' + e(obj[k])).join('&');
         }
+
+        function request(url, options) {
+            var method = options && options.method || 'GET';
+            var headers = options && options.headers;
+            var data = options && options.data;
+            var success = options && options.success;
+            var req = new XMLHttpRequest();
+            req.onreadystatechange = function() {
+                switch (req.readyState) {
+                    case 4:
+                        if (success) {
+                            success(req.status, req.responseText);
+                        }
+                }
+            }
+            req.open(method, url);
+            if (headers) {
+                Object.keys(headers).forEach(k =>
+                    req.setRequestHeader(k, headers[k]));
+            }
+            req.send(data);
+        }
+
+        function get(url, options) {
+            options = options || {};
+            options.method = 'GET';
+            return request(url, options);
+        }
+
+        function post(url, data, options) {
+            options = options || {};
+            options.method = 'POST';
+            options.headers = options.headers || {}
+            options.headers['Content-Type'] =
+                'application/x-www-form-urlencoded';
+            options.data = toUrlEncoded(data);
+            return request(url, options);
+        }
+
+        function show(route, on) {
+            for (var element of document.querySelectorAll('section'))
+                element.style.display = 'none';
+            var selector = `section[route="${route}"]`;
+            for (var element of document.querySelectorAll(selector)) {
+                element.style.display = 'block';
+                if (on) on(element);
+            }
+        }
+
+        function go(route, on) {
+            show(route, on);
+            window.history.pushState(null, null, route);
+        }
+
+        window.onload = function() {
+            show(location.pathname);
+        };
+
+        window.onpopstate = function() {
+            show(location.pathname);
+        };
+
         function submitPostAuth(form) {
-            var signup = signElements()[0],
-                signin = signElements()[1];
-            signup.style.display = 'none';
-            signin.style.display = 'none';
-            var req = new XMLHttpRequest();
-            req.onreadystatechange = function() {
-                switch (req.readyState) {
-                    case 4:
-                        if (req.status == 200) {
-                            localStorage.setItem('addr', JSON.stringify(form.id.value));
-                            localStorage.setItem('hint', req.responseText);
-                            form.id.value = '';
-                        }
+            post('/auth', {id: form.id.value}, {
+                success(status, response) {
+                    if (status == 200) {
+                        go('/auth', root => {
+                            var to = root.querySelector('form');
+                            to.id.value = form.id.value;
+                            to.hint.value = response;
+                        });
+                    }
                 }
-            }
-            req.open('POST', '/auth');
-            req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            req.send(`id=${encodeURIComponent(form.id.value)}`);
+            });
             return false;
         }
+
         function submitGetToken(form) {
-            var signup = signElements()[0],
-                signin = signElements()[1];
-            signup.style.display = 'none';
-            signin.style.display = 'none';
-            var s = localStorage.getItem('addr');
-            var addr = btoa(unescape(encodeURIComponent(JSON.parse(s))));
+            var addr = btoa(unescape(encodeURIComponent(form.id.value)));
             var pass = btoa(unescape(encodeURIComponent(form.password.value)));
-            var hint = JSON.parse(localStorage.getItem('hint'));
-            var req = new XMLHttpRequest();
-            req.onreadystatechange = function() {
-                switch (req.readyState) {
-                    case 4:
-                        if (req.status == 200) {
-                            localStorage.setItem('token', req.responseText);
-                            var token = JSON.parse(req.responseText);
-                            if (token.type == 'hook') {
-                                signup.style.display = 'block';
-                                signin.style.display = 'none';
-                            } else {
-                                callGetAccount('me', function(account) {
-                                    signup.style.display = 'none';
-                                    signin.style.display = 'block';
-                                });
-                            }
-                        } else if (req.status == 401) {
-                            alert('Authentication failed. Please try again.');
+            var hint = form.hint.value;
+            get('/token', {
+                headers: {
+                    'Authorization': `Hook ${addr} ${pass} ${hint}`
+                },
+                success(status, response) {
+                    if (status == 200) {
+                        var token = JSON.parse(response);
+                        if (token.type == 'hook') {
+                            go('/signup', root => {
+                                var to = root.querySelector('form');
+                                to.token.value = token.value;
+                            });
+                        } else {
+                            get('/accounts/me', {
+                                headers: {
+                                    'Authorization': `Bearer ${token.value}`
+                                },
+                                success(status, response) {
+                                    var account = JSON.parse(response)
+                                    if (status == 200) {
+                                        go('/dashboard', root => {
+                                            for (var name of root.querySelectorAll('.name')) {
+                                                name.innerHTML = account.name;
+                                            }
+                                            var to = root.querySelector('form');
+                                            to.token.value = token.value;
+                                        });
+                                    }
+                                }
+                            });
                         }
+                    } else if (status == 401) {
+                        alert('Authentication failed. Please try again.');
+                    }
                 }
-            }
-            req.open('GET', '/token');
-            req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            req.setRequestHeader('Authorization', `Hook ${addr} ${pass} ${hint}`);
-            req.send();
+            });
             return false;
         }
+
         function submitPostAccount(form) {
             var token = JSON.parse(localStorage.getItem('token'));
             var req = new XMLHttpRequest();
@@ -92,76 +148,42 @@
                      `&name=${encodeURIComponent(form.name.value)}`);
             return false;
         }
-        function callGetAccount(id, success) {
-            var token = JSON.parse(localStorage.getItem('token'));
-            var req = new XMLHttpRequest();
-            req.onreadystatechange = function() {
-                switch (req.readyState) {
-                    case 4:
-                        if (req.status == 200) {
-                            var account = JSON.parse(req.responseText);
-                            var accounts = document.querySelector('#accounts tbody');
-                            var tr = document.createElement('tr');
-                            var id = document.createElement('td');
-                            id.innerHTML = account.id;
-                            tr.appendChild(id);
-                            var type = document.createElement('td');
-                            type.innerHTML = account.type;
-                            tr.appendChild(type);
-                            var name = document.createElement('td');
-                            name.innerHTML = account.name;
-                            tr.appendChild(name);
-                            var email = document.createElement('td');
-                            email.innerHTML = account.email;
-                            tr.appendChild(email);
-                            var address = document.createElement('td');
-                            address.innerHTML = account.address;
-                            tr.appendChild(address);
-                            accounts.appendChild(tr);
-                            success(account);
-                        }
-                }
-            }
-            req.open('GET', `/accounts/${id}`);
-            req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            req.setRequestHeader('Authorization', `Bearer ${token.value}`);
-            req.send();
-        }
+
         function submitGetAccount(form) {
-            callGetAccount(form.id.value);
             return false;
         }
     </script>
     <body>
         <h1>{{ title }}</h1>
-        <section id="auth">
+        <section route="/">
             <form onsubmit="return submitPostAuth(this)">
                 <input type="text" name="id" placeholder="ID or Hook">
                 <button type="submit">Authentication</button>
             </form>
+        </section>
+        <section route="/auth">
             <form onsubmit="return submitGetToken(this)">
+                <input type="hidden" name="id">
+                <input type="hidden" name="hint">
                 <input type="text" name="password" placeholder="Received password">
                 <button type="submit">Get token</button>
             </form>
         </section>
-        <form id="signup" onsubmit="return submitPostAccount(this)">
-            <input type="text" name="id" placeholder="ID">
-            <input type="text" name="name" placeholder="Name">
-            <button type="submit">Post account</button>
-        </form>
-        <section id="signin">
-            <form onsubmit="return submitGetAccount(this)">
+        <section route="/signup">
+            <form onsubmit="return submitPostAccount(this)">
+                <input type="hidden" name="token">
                 <input type="text" name="id" placeholder="ID">
                 <input type="text" name="name" placeholder="Name">
+                <button type="submit">Post account</button>
+            </form>
+        </section>
+        <section route="/dashboard">
+            <p>Hello, <i class="name"></i>!</p>
+            <form onsubmit="return submitGetAccount(this)">
+                <input type="hidden" name="token">
+                <input type="text" name="id" placeholder="ID">
                 <button type="submit">Get account</button>
             </form>
-            <h1>Accounts</h1>
-            <table id="accounts">
-                <thead>
-                    <tr><th>ID</th><th>Type</th><th>Name</th><th>E-mail</th><th>Address</th></tr>
-                </thead>
-                <tbody></tbody>
-            </table>
         </section>
     </body>
 </html>
