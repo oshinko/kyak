@@ -92,3 +92,19 @@ TOKEN=`curl -H "Authorization: Hook $ADDR $PASS $HINT" \
 
 curl -H "Authorization: Bearer $TOKEN" http://localhost:5000/accounts/$ACCOUNT
 ```
+
+## Deploying on Amazon Linux 2
+
+AWS key pair is below.
+
+`KEYPAIR=$HOME/.ssh/kyak.pem`
+
+EC2 instance is below.
+
+`HOST=your-instance`
+
+Run this command in a shell prompt.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/oshinko/kyak/draft/deploy-on-amazon-linux-2.sh | ssh -i $KEYPAIR ec2-user@$HOST
+```

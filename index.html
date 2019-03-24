@@ -49,12 +49,14 @@
         }
 
         function show(route, on) {
-            for (var element of document.querySelectorAll('section'))
-                element.style.display = 'none';
-            var selector = `section[route="${route}"]`;
-            for (var element of document.querySelectorAll(selector)) {
-                element.style.display = 'block';
-                if (on) on(element);
+            for (var element of document.querySelectorAll('section[route]')) {
+                var regex = new RegExp(`^${element.getAttribute('route')}$`);
+                if (regex.test(location.pathname)) {
+                    element.style.display = 'block';
+                    if (on) on(element);
+                } else {
+                    element.style.display = 'none';
+                }
             }
         }
 
@@ -178,6 +180,14 @@
             </form>
         </section>
         <section route="/dashboard">
+            <p>Hello, <i class="name"></i>!</p>
+            <form onsubmit="return submitGetAccount(this)">
+                <input type="hidden" name="token">
+                <input type="text" name="id" placeholder="ID">
+                <button type="submit">Get account</button>
+            </form>
+        </section>
+        <section route="/accounts/[^/]+">
             <p>Hello, <i class="name"></i>!</p>
             <form onsubmit="return submitGetAccount(this)">
                 <input type="hidden" name="token">
