@@ -3,7 +3,7 @@ import requests
 import random
 import string
 from datetime import datetime, timedelta
-from flask import Flask, jsonify, redirect, request
+from flask import Flask, jsonify, request
 from flask_marshmallow import Marshmallow
 from flask_sqlalchemy import SQLAlchemy
 from osnk.http.auth import EmailAuthentication, TokenAuthentication
@@ -322,18 +322,3 @@ def delete_accounts(aid):
     db.session.delete(account)
     db.session.commit()
     return jsonify(AccountSchema().dump(account).data)
-
-
-if __name__ == '__main__':
-    import sys
-
-    if len(sys.argv) < 2:
-        print('usage:', sys.argv[0], 'show create tables', file=sys.stderr)
-        exit(1)
-
-    import inspect
-    import sqlalchemy.schema
-
-    for _, obj in dict(globals()).items():
-        if inspect.isclass(obj) and hasattr(obj, '__table__'):
-            print(sqlalchemy.schema.CreateTable(obj.__table__))
