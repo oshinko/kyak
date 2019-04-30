@@ -1,7 +1,7 @@
 import json
-import requests
 import random
 import string
+import urllib.request
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request
 from flask_marshmallow import Marshmallow
@@ -10,6 +10,19 @@ from osnk.http.auth import EmailAuthentication, TokenAuthentication
 from osnk.validations import requires
 from os import urandom
 from pathlib import Path
+
+
+def post(url, **kwargs):
+    headers = {'User-Agent': 'Kyak/0.0.0'}
+    if 'json' in kwargs:
+        data = json.dumps(kwargs['json']).encode()
+        headers['Content-Type'] = 'application/json'
+    elif 'data' in kwargs:
+        data = kwargs['data']
+    else:
+        data = None
+    req = urllib.request.Request(url, data, headers, method='POST')
+    urllib.request.urlopen(req)
 
 
 class AttrDict(dict):
@@ -258,7 +271,7 @@ def post_auth():
     password = ''.join(random.choices(s, k=8))
     encoded = json.dumps(payload).encode()
     hint = auth.hint([(aid_or_hook, password)], expires, encoded)
-    requests.post(url, json={'text': password})
+    post(url, json={'text': password})
     return jsonify(hint)
 
 
