@@ -3,6 +3,7 @@ git+https://github.com/oshinko/pyhttpauth.git#egg=httpauth
 flask==1.0.2
 flask-marshmallow==0.9.0
 Flask-SQLAlchemy==2.3.1
+gunicorn==19.9.0
 marshmallow-sqlalchemy===0.16.0
 psycopg2==2.7.7
 psycopg2-binary==2.7.7
