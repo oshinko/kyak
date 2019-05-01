@@ -1,4 +1,5 @@
-sudo yum install postgresql-server python3 -y
+# PostgreSQL
+sudo yum install postgresql-server -y
 sudo postgresql-setup initdb
 sudo cp /var/lib/pgsql/data/pg_hba.conf /var/lib/pgsql/data/pg_hba.conf.org
 sudo bash -c "cat << EOF > /var/lib/pgsql/data/pg_hba.conf
@@ -8,9 +9,14 @@ host    all             all             ::1/128                 trust
 EOF"
 sudo systemctl enable postgresql.service
 sudo systemctl start postgresql.service
+
+# Python
+sudo yum install python3 -y
 wget https://raw.githubusercontent.com/oshinko/kyak/draft/requirements.txt
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip -r requirements.txt
+
+# WSGI
 wget https://raw.githubusercontent.com/oshinko/kyak/draft/app.py
 wget https://raw.githubusercontent.com/oshinko/kyak/draft/example.kyak -O .kyak
 sed -i -e "s|database.*|database postgresql://postgres@localhost/postgres|" .kyak
@@ -33,6 +39,8 @@ EOF"
 sudo systemctl daemon-reload
 sudo systemctl enable kyak.service
 sudo systemctl start kyak.service
+
+# Nginx
 sudo amazon-linux-extras install nginx1.12 -y
 sudo bash -c "cat << 'EOF' > /etc/nginx/nginx.conf
 # ref: https://github.com/benoitc/gunicorn/blob/master/examples/nginx.conf
