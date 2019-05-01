@@ -61,8 +61,8 @@
         }
 
         function go(route, on) {
-            show(route, on);
             window.history.pushState(null, null, route);
+            show(route, on);
         }
 
         window.onload = function() {
