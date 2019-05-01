@@ -11,16 +11,16 @@ sudo systemctl start postgresql.service
 
 # Python
 sudo yum install python3 -y
-wget https://raw.githubusercontent.com/oshinko/kyak/draft/requirements.txt
+wget https://raw.githubusercontent.com/oshinko/kyak/draft/requirements.txt -O requirements.txt
 python3 -m venv .venv
 .venv/bin/python -m pip install -U pip -r requirements.txt
 
 # WSGI
-wget https://raw.githubusercontent.com/oshinko/kyak/draft/app.py
+wget https://raw.githubusercontent.com/oshinko/kyak/draft/app.py -O app.py
 wget https://raw.githubusercontent.com/oshinko/kyak/draft/example.kyak -O .kyak
 sed -i -e "s|database.*|database postgresql://postgres@localhost/postgres|" .kyak
 .venv/bin/python -c "from app import db; db.create_all()"
-wget https://raw.githubusercontent.com/oshinko/kyak/draft/index.html
+wget https://raw.githubusercontent.com/oshinko/kyak/draft/index.html -O index.html
 sudo bash -c "cat << EOF > /etc/systemd/system/kyak.service
 [Unit]
 Description=Kyak
