@@ -1,7 +1,6 @@
 # PostgreSQL
 sudo yum install postgresql-server -y
 sudo postgresql-setup initdb
-sudo cp /var/lib/pgsql/data/pg_hba.conf /var/lib/pgsql/data/pg_hba.conf.org
 sudo bash -c "cat << EOF > /var/lib/pgsql/data/pg_hba.conf
 local   all             all                                     trust
 host    all             all             127.0.0.1/32            trust
