@@ -101,7 +101,7 @@ AWS key pair is below.
 
 EC2 instance is below.
 
-`HOST=your-instance`
+`HOST=Your-Instance`
 
 App secret is below.
 
