@@ -18,6 +18,7 @@ python3 -m venv .venv
 # WSGI
 wget https://raw.githubusercontent.com/oshinko/kyak/draft/app.py -O app.py
 wget https://raw.githubusercontent.com/oshinko/kyak/draft/example.kyak -O .kyak
+sed -i -e "s/secret.*/secret $1/" .kyak
 sed -i -e "s|database.*|database postgresql://postgres@localhost/postgres|" .kyak
 .venv/bin/python -c "from app import db; db.create_all()"
 wget https://raw.githubusercontent.com/oshinko/kyak/draft/index.html -O index.html

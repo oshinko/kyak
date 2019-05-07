@@ -103,8 +103,12 @@ EC2 instance is below.
 
 `HOST=your-instance`
 
+App secret is below.
+
+`SECRET=Your-Secret-Text`
+
 Run this command in a shell prompt.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/oshinko/kyak/draft/deploy-on-amazon-linux-2.sh | ssh -i $KEYPAIR ec2-user@$HOST
+curl -fsSL https://raw.githubusercontent.com/oshinko/kyak/draft/deploy-on-amazon-linux-2.sh | sed -e "s/\$1/$SECRET/" | ssh -i $KEYPAIR ec2-user@$HOST
 ```
