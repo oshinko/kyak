@@ -204,6 +204,11 @@ def get_system_contracts(*, contractors=None, when=datetime.now()):
     return None
 
 
+@app.before_first_request
+def init():
+    db.create_all()
+
+
 @app.route('/')
 def index():
     return Path('index.html').read_text().replace('{{ title }}', conf.title)
