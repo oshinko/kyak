@@ -31,8 +31,8 @@ class AttrDict(dict):
         self.__dict__ = self
 
 
-def config(path):
-    r = AttrDict()
+def config(path, dict_class=dict):
+    r = dict_class()
     with open(path) as f:
         for line in f:
             s = line.split('#', 1)[0]
