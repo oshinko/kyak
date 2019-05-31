@@ -5,7 +5,6 @@ import urllib.request
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request
 from flask_marshmallow import Marshmallow
-# from flask_sqlalchemy import SQLAlchemy
 from flask_sharded_sqlalchemy import ShardedSQLAlchemy as SQLAlchemy
 from flask_sharded_sqlalchemy import BindKeyPattern
 from osnk.http.auth import EmailAuthentication, TokenAuthentication
@@ -102,7 +101,7 @@ for k, v in conf.databases.items():
     if isinstance(v, list):
         binds.update({':'.join([k, str(i)]): bind for i, bind in enumerate(v)})
     else:
-        binds.update({k: v})
+        binds.update({k + ':0': v})
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_BINDS'] = binds
@@ -115,7 +114,7 @@ ma = Marshmallow(app)
 
 class Account(db.Model):
     __tablename__ = 'accounts'
-    __bind_key__ = BindKeyPattern(r'account:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     id = db.Column(db.String(16), primary_key=True)
     type = db.Column(db.String(16), nullable=False, default='personal')
     name = db.Column(db.String(), nullable=False)
@@ -130,7 +129,7 @@ class Account(db.Model):
 
 class Access(db.Model):
     __tablename__ = 'accesses'
-    __bind_key__ = BindKeyPattern(r'account:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     owner = db.Column(db.String(16), primary_key=True)
     access = db.Column(db.String(), nullable=False)
@@ -144,7 +143,7 @@ class Access(db.Model):
 
 class Hook(db.Model):
     __tablename__ = 'hooks'
-    __bind_key__ = 'hooks'
+    __bind_key__ = BindKeyPattern(r'hooks:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     type = db.Column(db.String(16), primary_key=True)
     url = db.Column(db.String(), unique=True, nullable=False)
@@ -154,7 +153,7 @@ class Hook(db.Model):
 
 class Offer(db.Model):
     __tablename__ = 'offers'
-    __bind_key__ = BindKeyPattern(r'account:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     offeror = db.Column(db.String(16), primary_key=True)
     c = db.Column(db.String(32), primary_key=True, default=rand16hex)
@@ -168,7 +167,7 @@ class Offer(db.Model):
 
 class Contract(db.Model):
     __tablename__ = 'contracts'
-    __bind_key__ = BindKeyPattern(r'account:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -190,7 +189,7 @@ class Contract(db.Model):
 
 class Term(db.Model):
     __tablename__ = 'terms'
-    __bind_key__ = BindKeyPattern(r'account:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -209,7 +208,7 @@ class Term(db.Model):
 
 class TimeAndMaterialsPrice(db.Model):
     __tablename__ = 'time_and_materials_prices'
-    __bind_key__ = BindKeyPattern(r'account:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -227,7 +226,7 @@ class TimeAndMaterialsPrice(db.Model):
 
 class TimeAndMaterialsActivity(db.Model):
     __tablename__ = 'time_and_materials_activities'
-    __bind_key__ = BindKeyPattern(r'account:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -247,7 +246,7 @@ class TimeAndMaterialsActivity(db.Model):
 
 class Payment(db.Model):
     __tablename__ = 'payments'
-    __bind_key__ = BindKeyPattern(r'account:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -266,7 +265,7 @@ class Payment(db.Model):
 
 class ContractTemplates(db.Model):
     __tablename__ = 'contract_templates'
-    __bind_key__ = BindKeyPattern(r'account:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -284,7 +283,7 @@ class ContractTemplates(db.Model):
 
 class TermTemplates(db.Model):
     __tablename__ = 'term_templates'
-    __bind_key__ = BindKeyPattern(r'account:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
