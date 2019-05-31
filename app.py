@@ -1,16 +1,18 @@
+import collections
 import json
 import random
 import string
 import urllib.request
 from datetime import datetime, timedelta
-from flask import Flask, jsonify, request
-from flask_marshmallow import Marshmallow
-from flask_sharded_sqlalchemy import ShardedSQLAlchemy as SQLAlchemy
-from flask_sharded_sqlalchemy import BindKeyPattern
-from osnk.http.auth import EmailAuthentication, TokenAuthentication
-from osnk.validations import requires
 from os import urandom
 from pathlib import Path
+
+from flask import Flask, jsonify, request
+from flask_marshmallow import Marshmallow
+from flask_sharded_sqlalchemy import BindKeyPattern
+from flask_sharded_sqlalchemy import ShardedSQLAlchemy as SQLAlchemy
+from osnk.http.auth import EmailAuthentication, TokenAuthentication
+from osnk.validations import requires
 
 
 def post(url, **kwargs):
@@ -126,6 +128,7 @@ class Account(db.Model):
     @classmethod
     def __hash_id__(cls, ident):
         return ord(ident[0][0])
+
 
 class Access(db.Model):
     __tablename__ = 'accesses'
