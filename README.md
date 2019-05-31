@@ -20,13 +20,6 @@ cp example.kyak $HOME/.kyak
 ```
 
 
-## Initializing database
-
-```bash
-$HOME/.venv/kyak/bin/python -c "from app import db; db.drop_all(); db.create_all()"
-```
-
-
 ## Running server
 
 ```bash
