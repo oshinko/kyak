@@ -5,7 +5,9 @@ import urllib.request
 from datetime import datetime, timedelta
 from flask import Flask, jsonify, request
 from flask_marshmallow import Marshmallow
-from flask_sqlalchemy import SQLAlchemy
+# from flask_sqlalchemy import SQLAlchemy
+from flask_sharded_sqlalchemy import ShardedSQLAlchemy as SQLAlchemy
+from flask_sharded_sqlalchemy import BindKeyPattern
 from osnk.http.auth import EmailAuthentication, TokenAuthentication
 from osnk.validations import requires
 from os import urandom
@@ -25,34 +27,87 @@ def post(url, **kwargs):
     urllib.request.urlopen(req)
 
 
+def tree(keytree, value, dict_class=dict):
+    try:
+        k = next(keytree)
+    except StopIteration:
+        return value
+    else:
+        return dict_class({k: tree(keytree, value)})
+
+
+def merge(a, b, dict_class=dict, inplace=False):
+    if not inplace:
+        a = a.copy()
+    for k, v in b.items():
+        if isinstance(v, dict):
+            a[k] = merge(a.get(k, dict_class()), v, dict_class, inplace=True)
+        else:
+            a[k] = v
+    return a
+
+
+def update(d, u):
+    for k, v in u.items():
+        if isinstance(v, collections.Mapping):
+            d[k] = update(d.get(k, {}), v)
+        else:
+            d[k] = v
+    return d
+
+
+def normalize(d, dict_class=dict):
+    if isinstance(d, dict):
+        if all(x.isdigit() for x in d.keys()):
+            return [normalize(v, dict_class) for k, v in d.items()]
+        else:
+            return dict_class({k: normalize(v, dict_class)
+                               for k, v in d.items()})
+    return d
+
+
+def load(f, dict_class=dict):
+    loaded = dict_class()
+    for line in f:
+        s = line.split('#', 1)[0]
+        if s:
+            kv = s.split(' ', 1)
+            if len(kv) == 2:
+                k, v = [x.strip() for x in kv]
+                t = tree(iter(k.split('.')), v, dict_class)
+                merge(loaded, t, dict_class, inplace=True)
+    return normalize(loaded, dict_class)
+
+
+def config(path, dict_class=dict):
+    with open(path) as f:
+        return load(f, dict_class)
+
+
 class AttrDict(dict):
     def __init__(self, *args, **kwargs):
         super(AttrDict, self).__init__(*args, **kwargs)
         self.__dict__ = self
 
 
-def config(path, dict_class=dict):
-    r = dict_class()
-    with open(path) as f:
-        for line in f:
-            s = line.split('#', 1)[0]
-            if s:
-                kv = s.split(' ', 1)
-                if len(kv) == 2:
-                    k, v = [x.strip() for x in kv]
-                    r[k] = v
-    return r
-
-
 def rand16hex():
     return urandom(16).hex()
 
 
-conf = config(Path.home() / '.kyak')
+conf = config(Path.home() / '.kyak', dict_class=AttrDict)
+
+binds = {}
+
+for k, v in conf.databases.items():
+    if isinstance(v, list):
+        binds.update({':'.join([k, str(i)]): bind for i, bind in enumerate(v)})
+    else:
+        binds.update({k: v})
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = conf.database
+app.config['SQLALCHEMY_BINDS'] = binds
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_ECHO'] = app.debug
 
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
@@ -60,6 +115,7 @@ ma = Marshmallow(app)
 
 class Account(db.Model):
     __tablename__ = 'accounts'
+    __bind_key__ = BindKeyPattern(r'account:\d+')
     id = db.Column(db.String(16), primary_key=True)
     type = db.Column(db.String(16), nullable=False, default='personal')
     name = db.Column(db.String(), nullable=False)
@@ -68,18 +124,27 @@ class Account(db.Model):
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
 
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
 
 class Access(db.Model):
     __tablename__ = 'accesses'
+    __bind_key__ = BindKeyPattern(r'account:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     owner = db.Column(db.String(16), primary_key=True)
     access = db.Column(db.String(), nullable=False)
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
 
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
+
 
 class Hook(db.Model):
     __tablename__ = 'hooks'
+    __bind_key__ = 'hooks'
     account_id = db.Column(db.String(16), primary_key=True)
     type = db.Column(db.String(16), primary_key=True)
     url = db.Column(db.String(), unique=True, nullable=False)
@@ -89,15 +154,21 @@ class Hook(db.Model):
 
 class Offer(db.Model):
     __tablename__ = 'offers'
+    __bind_key__ = BindKeyPattern(r'account:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     offeror = db.Column(db.String(16), primary_key=True)
     c = db.Column(db.String(32), primary_key=True, default=rand16hex)
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
 
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
+
 
 class Contract(db.Model):
     __tablename__ = 'contracts'
+    __bind_key__ = BindKeyPattern(r'account:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -112,9 +183,14 @@ class Contract(db.Model):
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
 
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
+
 
 class Term(db.Model):
     __tablename__ = 'terms'
+    __bind_key__ = BindKeyPattern(r'account:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -126,9 +202,14 @@ class Term(db.Model):
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
 
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
+
 
 class TimeAndMaterialsPrice(db.Model):
     __tablename__ = 'time_and_materials_prices'
+    __bind_key__ = BindKeyPattern(r'account:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -139,9 +220,14 @@ class TimeAndMaterialsPrice(db.Model):
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
 
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
+
 
 class TimeAndMaterialsActivity(db.Model):
     __tablename__ = 'time_and_materials_activities'
+    __bind_key__ = BindKeyPattern(r'account:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -154,9 +240,14 @@ class TimeAndMaterialsActivity(db.Model):
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
 
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
+
 
 class Payment(db.Model):
     __tablename__ = 'payments'
+    __bind_key__ = BindKeyPattern(r'account:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -168,9 +259,14 @@ class Payment(db.Model):
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
 
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
+
 
 class ContractTemplates(db.Model):
     __tablename__ = 'contract_templates'
+    __bind_key__ = BindKeyPattern(r'account:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -180,10 +276,15 @@ class ContractTemplates(db.Model):
     description = db.Column(db.String(), nullable=False)
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
+
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
 
 
 class TermTemplates(db.Model):
     __tablename__ = 'term_templates'
+    __bind_key__ = BindKeyPattern(r'account:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     contractor = db.Column(db.String(16), primary_key=True)
     contractee = db.Column(db.String(16), primary_key=True)
@@ -193,6 +294,10 @@ class TermTemplates(db.Model):
     description = db.Column(db.String(), nullable=False)
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
+
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
 
 
 class AccountSchema(ma.ModelSchema):
@@ -269,7 +374,7 @@ def post_auth():
             payload = {'hook': url}
     else:
         aid = aid_or_hook
-        hook = Hook.query.filter_by(account_id=aid, type='auth').first_or_404()
+        hook = Hook.query.filter_by(account_id=aid, type='auth').first()
         payload = {'account': hook.account_id}
         url = hook.url
     s = string.ascii_uppercase + string.digits
@@ -325,9 +430,9 @@ def post_accounts(passed):
 @requires(account_token)
 def get_accounts(aid):
     if aid == 'me':
-        account = Account.query.get_or_404(account_token.payload['account'])
+        account = Account.query.get(account_token.payload['account'])
     else:
-        account = Account.query.get_or_404(aid)
+        account = Account.query.get(aid)
     return jsonify(AccountSchema().dump(account).data)
 
 
@@ -336,7 +441,7 @@ def get_accounts(aid):
 def delete_accounts(aid):
     if aid != account_token.payload['account']:
         return jsonify('Forbidden'), 403
-    account = Account.query.get_or_404(aid)
+    account = Account.query.get(aid)
     db.session.delete(account)
     db.session.commit()
     return jsonify(AccountSchema().dump(account).data)
