@@ -143,12 +143,16 @@ class Access(db.Model):
 
 class Hook(db.Model):
     __tablename__ = 'hooks'
-    __bind_key__ = BindKeyPattern(r'hooks:\d+')
+    __bind_key__ = BindKeyPattern(r'accounts:\d+')
     account_id = db.Column(db.String(16), primary_key=True)
     type = db.Column(db.String(16), primary_key=True)
     url = db.Column(db.String(), unique=True, nullable=False)
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
+
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
 
 
 class Offer(db.Model):
@@ -291,6 +295,19 @@ class TermTemplates(db.Model):
     cc = db.Column(db.String(32), primary_key=True, default=rand16hex)
     title = db.Column(db.String(), nullable=False)
     description = db.Column(db.String(), nullable=False)
+    created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    updated = db.Column(db.DateTime, nullable=True)
+
+    @classmethod
+    def __hash_id__(cls, ident):
+        return ord(ident[0][0])
+
+
+class Alias(db.Model):
+    __tablename__ = 'aliases'
+    __bind_key__ = BindKeyPattern(r'aliases:\d+')
+    id = db.Column(db.String(16), primary_key=True)
+    account_id = db.Column(db.String(16), nullable=False)
     created = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     updated = db.Column(db.DateTime, nullable=True)
 

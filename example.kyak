@@ -1,5 +1,5 @@
 title Kyak
 secret 
-databases.hooks sqlite:///:memory:
 databases.accounts.0 sqlite:///:memory:
 databases.accounts.1 sqlite:///:memory:
+databases.aliases sqlite:///:memory:
