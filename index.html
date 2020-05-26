@@ -188,12 +188,20 @@
             </form>
         </section>
         <section route="/accounts/[^/]+">
-            <p>Hello, <i class="name"></i>!</p>
-            <form onsubmit="return submitGetAccount(this)">
-                <input type="hidden" name="token">
-                <input type="text" name="id" placeholder="ID">
-                <button type="submit">Get account</button>
-            </form>
+            <h1 class="name"></h1>
+            <p>...</p>
+        </section>
+        <section route="/offers">
+            <h1>Offers (自分への)</h1>
+            <ul></ul>
+        </section>
+        <section route="/contracts">
+            <h1>Contracts</h1>
+            <p>自分へのオファーを除く、自分が作成した契約</p>
+        </section>
+        <section route="/contracts/[^/]+/[^/]+/[^/]+">
+            <h1>Contract</h1>
+            <p>自分が作成した契約もしくは自分へのオファーしか見れない</p>
         </section>
     </body>
 </html>
