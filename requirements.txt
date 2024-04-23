@@ -1,6 +1,6 @@
 git+https://github.com/oshinko/pyvalidation.git#egg=validation
 git+https://github.com/oshinko/pyhttpauth.git#egg=httpauth
-flask==1.0.2
+flask==2.3.2
 flask-marshmallow==0.9.0
 Flask-SQLAlchemy==2.3.1
 gunicorn==19.9.0
